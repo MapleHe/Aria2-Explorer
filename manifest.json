@@ -28,7 +28,7 @@
    "background": {
       "page": "background.html"
    },
-   "incognito": "split",
+   "incognito": "spanning",
    "action": {
       "default_icon": {
          "16": "images/logo16.png",
