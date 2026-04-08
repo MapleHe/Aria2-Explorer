@@ -252,7 +252,9 @@ class Utils {
 
     static getWebStoreUrl() {
         let id = chrome.runtime.id;
-        if (/Edg/.test(navigator.userAgent))
+        if (/Firefox/.test(navigator.userAgent))
+            return "https://addons.mozilla.org/firefox/addon/aria2-explorer/";
+        else if (/Edg/.test(navigator.userAgent))
             return "https://microsoftedge.microsoft.com/addons/detail/" + id;
         else
             return "https://chromewebstore.google.com/detail/" + id;
@@ -293,7 +295,15 @@ class Utils {
      * @return {string} OS platform name
      */
     static getPlatform() {
-        return navigator.userAgentData.platform;
+        if (navigator.userAgentData?.platform) {
+            return navigator.userAgentData.platform;
+        }
+        // Fallback for Firefox (no userAgentData)
+        const ua = navigator.userAgent;
+        if (/Windows/.test(ua)) return 'Windows';
+        if (/Mac/.test(ua)) return 'macOS';
+        if (/Linux/.test(ua)) return 'Linux';
+        return '';
     }
 }
 

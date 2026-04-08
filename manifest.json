@@ -3,11 +3,16 @@
    "short_name": "A2E",
    "version": "2.8.0",
    "manifest_version": 3,
-   "minimum_chrome_version": "116.0.0",
    "default_locale": "en",
    "description": "__MSG_description__",
    "homepage_url": "https://aria2e.com",
    "options_page": "options.html",
+   "browser_specific_settings": {
+      "gecko": {
+         "id": "aria2-explorer@aria2e.com",
+         "strict_min_version": "140.0"
+      }
+   },
    "permissions": [
       "cookies",
       "tabs",
@@ -15,9 +20,7 @@
       "contextMenus",
       "downloads",
       "storage",
-      "scripting",
-      "sidePanel",
-      "power"
+      "scripting"
    ],
    "host_permissions": [
       "<all_urls>"
@@ -34,9 +37,6 @@
          "48": "images/logo48.png"
       },
       "default_title": "__MSG_appName__"
-   },
-   "side_panel": {
-      "default_path": "ui/ariang/index.html"
    },
    "content_security_policy": {
       "extension_pages": "script-src 'self';object-src 'self';frame-src 'self' aria2://* https://*.aria2e.com/;"
@@ -60,11 +60,6 @@
          },
          "description": "__MSG_startAria2Str__"
       }
-   },
-   "externally_connectable": {
-      "ids": [
-         "*"
-      ]
    },
    "web_accessible_resources": [
       {

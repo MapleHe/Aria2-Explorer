@@ -6,6 +6,8 @@ import ContextMenu from "./js/contextMenu.js";
 import { IconManager } from "./js/IconUtils/IconManager.js";
 import { AnimationController } from './js/IconUtils/AnimationController.js';
 
+const isBrowserInternalUrl = (url) => !url || /^(chrome|moz-extension|about|edge):/.test(url);
+
 const NID_DEFAULT = "NID_DEFAULT";
 const NID_TASK_NEW = "NID_TASK_NEW";
 const NID_TASK_STOPPED = "NID_TASK_STOPPED";
@@ -108,9 +110,11 @@ async function download(downloadItem, rpcItem) {
 }
 
 async function getCookies(downloadItem) {
-    let storeId = chrome.extension.inIncognitoContext ? "1" : "0";
     let url = downloadItem.multiTask ? downloadItem.referrer : downloadItem.url;
-    let cookies = await chrome.cookies.getAll({ url, storeId });
+    // Firefox uses different storeId values; omitting storeId uses the current context's store
+    const isFirefox = /Firefox/.test(navigator.userAgent);
+    let cookieQuery = isFirefox ? { url } : { url, storeId: chrome.extension.inIncognitoContext ? "1" : "0" };
+    let cookies = await chrome.cookies.getAll(cookieQuery);
     let cookieItems = [];
     for (const cookie of cookies) {
         cookieItems.push(cookie.name + "=" + cookie.value);
@@ -318,7 +322,7 @@ async function launchUI(info) {
     let webUiUrl = index + '#!'; // launched from notification, option menu or browser toolbar icon
 
     let sidePanelOpened = false;
-    if (Configs.webUIOpenStyle == "sidePanel") {
+    if (Configs.webUIOpenStyle == "sidePanel" && chrome.sidePanel) {
         try {
             if (info && 'id' in info) {
                 await chrome.sidePanel.open({ tabId: info.id });
@@ -357,7 +361,7 @@ async function launchUI(info) {
         webUiUrl = index;
     }
 
-    if (sidePanelOpened) {
+    if (sidePanelOpened && chrome.sidePanel) {
         if (info && 'id' in info) {
             await chrome.sidePanel.setOptions({ tabId: info.id, path: webUiUrl });
         } else {
@@ -575,7 +579,7 @@ function onMenuClick(info, tab) {
             downloadItem.dir = rpcItem.location;
             send2Aria(downloadItem, rpcItem);
         }
-    } else if (info.menuItemId == "MENU_EXPORT_ALL" && !tab.url.startsWith("chrome")) {
+    } else if (info.menuItemId == "MENU_EXPORT_ALL" && !isBrowserInternalUrl(tab.url)) {
         chrome.scripting.executeScript({
             target: { tabId: tab.id, allFrames: !info.frameId, frameIds: info.frameId ? [info.frameId] : undefined },
             func: exportAllLinks,
@@ -615,7 +619,7 @@ function updateAllowedSites(tab) {
     if (tab == null || tab.url == null) {
         console.warn("Could not get active tab url, update option menu failed.");
     }
-    if (!tab.active || tab.url.startsWith("chrome"))
+    if (!tab.active || isBrowserInternalUrl(tab.url))
         return;
     var allowedSitesSet = new Set(Configs.allowedSites);
     var url = new URL(tab.url);
@@ -632,7 +636,7 @@ function updateBlockedSites(tab) {
     if (tab == null || tab.url == null) {
         console.warn("Could not get active tab url, update option menu failed.");
     }
-    if (!tab.active || tab.url.startsWith("chrome"))
+    if (!tab.active || isBrowserInternalUrl(tab.url))
         return;
     var blockedSitesSet = new Set(Configs.blockedSites);
     var url = new URL(tab.url);
@@ -666,7 +670,7 @@ function disableMonitor() {
     if (Configs.integration && !isDownloadListened()) {
         chrome.downloads.onDeterminingFilename.addListener(captureDownload);
     }
-    chrome.power.releaseKeepAwake();
+    chrome.power?.releaseKeepAwake();
 }
 
 async function monitorAria2() {
@@ -723,16 +727,16 @@ async function monitorAria2() {
             MonitorId = setInterval(monitorAria2, MonitorInterval);
         }
         if (Configs.keepAwake && localConnected > 0)
-            chrome.power.requestKeepAwake("system");
+            chrome.power?.requestKeepAwake("system");
         else
-            chrome.power.releaseKeepAwake();
+            chrome.power?.releaseKeepAwake();
     } else if (active == 0) {
         if (MonitorInterval == INTERVAL_SHORT) {
             MonitorInterval = INTERVAL_LONG;
             clearInterval(MonitorId);
             MonitorId = setInterval(monitorAria2, MonitorInterval);
         }
-        chrome.power.releaseKeepAwake();
+        chrome.power?.releaseKeepAwake();
         if (waiting > 0) {
             IconAnimController.start('Pause');
         }
@@ -764,7 +768,7 @@ async function monitorAria2() {
         let finishStr = chrome.i18n.getMessage("finish");
         title += `${downloadStr}: ${active}  ${waitStr}: ${waiting}  ${finishStr}: ${stopped}\n${uploadStr}: ${uploadSpeed}  ${downloadStr}: ${downloadSpeed}`;
     } else {
-        if (localConnected == 0) chrome.power.releaseKeepAwake();
+        if (localConnected == 0) chrome.power?.releaseKeepAwake();
         bgColor = "#A83030" // red;
         text = 'E';
         if (Configs.monitorAll)
@@ -782,7 +786,7 @@ async function monitorAria2() {
 }
 
 async function resetSidePanel(tabId) {
-    if (Configs.webUIOpenStyle == "sidePanel") {
+    if (Configs.webUIOpenStyle == "sidePanel" && chrome.sidePanel) {
         let { path } = await chrome.sidePanel.getOptions(tabId ? { tabId } : undefined);
         const defaultPath = 'ui/ariang/index.html';
         if (!path.endsWith(defaultPath)) {
@@ -880,8 +884,8 @@ function registerAllListeners() {
         }
     });
 
-    /* receive request from other extensions */
-    chrome.runtime.onMessageExternal.addListener(
+    /* receive request from other extensions (Chrome/Edge only) */
+    chrome.runtime.onMessageExternal?.addListener(
         function (downloadItem) {
             if (Configs.allowExternalRequest) {
                 download(downloadItem);
@@ -959,7 +963,7 @@ function init() {
         });
         url = Configs.captureMagnet ? "https://github.com/alexhua/Aria2-Explore/issues/98" : '';
         chrome.runtime.setUninstallURL(url);
-        chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: Configs.webUIOpenStyle == "sidePanel" });
+        chrome.sidePanel?.setPanelBehavior({ openPanelOnActionClick: Configs.webUIOpenStyle == "sidePanel" });
     });
 }
 

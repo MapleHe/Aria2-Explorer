@@ -3,7 +3,8 @@ import { DefaultConfigs, DefaultAriaNgOptions } from "./config.js";
 
 const AriaNgOptionsKey = "AriaNg.Options"; // AriaNG options local storage key
 
-const SHORTCUTS_PAGE_URL = "chrome://extensions/shortcuts";
+const isFirefox = /Firefox/.test(navigator.userAgent);
+const SHORTCUTS_PAGE_URL = isFirefox ? "about:addons" : "chrome://extensions/shortcuts";
 
 const ColorModeList = [
     { name: 'light', icon: 'fa-sun', title: 'LightMode' },
@@ -53,6 +54,13 @@ var Configs =
         }
 
         Configs.rpcList.length > 1 ? $("#monitor-all").show() : $("#monitor-all").hide();
+        if (isFirefox) {
+            $("#sidePanelOption").hide();
+            if (Configs.webUIOpenStyle === "sidePanel") {
+                Configs.webUIOpenStyle = "window";
+                $("#window").prop("checked", true);
+            }
+        }
 
         for (const [dependent, dependency] of Object.entries(OptionDeps)) {
             $(`#${dependent}`).prop("disabled", !Configs[dependency]);
