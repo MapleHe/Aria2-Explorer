@@ -948,6 +948,11 @@ function registerAllListeners() {
 function init() {
     chrome.storage.local.get().then((configs) => {
         Object.assign(Configs, configs);
+        // Firefox: fall back to popup when no explicit preference is stored or sidePanel is selected
+        if (/Firefox/.test(navigator.userAgent) &&
+            (!configs.webUIOpenStyle || configs.webUIOpenStyle === "sidePanel")) {
+            Configs.webUIOpenStyle = "popup";
+        }
         let url = Configs.webUIOpenStyle == "popup" ? chrome.runtime.getURL('ui/ariang/popup.html') : '';
         chrome.action.setPopup({
             popup: url
