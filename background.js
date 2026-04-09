@@ -548,7 +548,7 @@ function onMenuClick(info, tab) {
     let downloadItem = { url, referrer, filename, incognito: tab.incognito };
 
     if (info.menuItemId == "MENU_OPEN_WEB_UI") {
-        launchUI(tab);
+        chrome.tabs.create({ url: chrome.runtime.getURL('ui/ariang/index.html') });
     } else if (info.menuItemId == "MENU_START_ARIA2") {
         const url = chrome.runtime.getURL('aria2.html');
         chrome.tabs.create({ url });

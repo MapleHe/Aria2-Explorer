@@ -445,8 +445,7 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
                 console.warn("The stored AriaNG options is null or invalid.")
             }
             let newAriaNgOptions = JSON.stringify(Utils.exportRpcToAriaNg(changes.rpcList.newValue, ariaNgOptions));
-            let str = chrome.i18n.getMessage("OverwriteAriaNgRpcWarn");
-            if (newAriaNgOptions != oldAriaNgOptions && confirm(str)) {
+            if (newAriaNgOptions != oldAriaNgOptions) {
                 localStorage[AriaNgOptionsKey] = newAriaNgOptions;
             }
         }
