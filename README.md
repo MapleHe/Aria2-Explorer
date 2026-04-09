@@ -2,6 +2,11 @@
 
 **Aria2 Explorer** is an extension that could export URLs to Aria2 to complete downloads and imports [AriaNG](https://www.github.com/mayswind/AriaNg/) as a built-in management frontend.
 
+## Changes in this fork/branch
+
+Add support for firefox browser, with help from Claude AI.
+However, the capture doesn't work well. (It's burning the token.)
+
 ## 📑How to use
 
 Procedures:
