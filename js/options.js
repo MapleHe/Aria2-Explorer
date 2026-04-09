@@ -264,7 +264,7 @@ var Configs =
             tempSet.delete("");
             Configs[textarea.id] = Array.from(tempSet);
         }
-        chrome.storage.local.set(Configs);
+        chrome.storage.local.set(toStorageData(Configs));
     },
     upload: function () {
         try {
@@ -282,7 +282,7 @@ var Configs =
             if (!confirm(str))
                 return;
         }
-        chrome.storage.sync.set(Configs).then(() => {
+        chrome.storage.sync.set(toStorageData(Configs)).then(() => {
             let str = chrome.i18n.getMessage("uploadConfigSucceed");
             Configs.notifySyncResult(str, "alert-success");
         }).catch(error => {
@@ -313,7 +313,7 @@ var Configs =
                     console.warn("Download: AriaNG options is invalid.");
                 }
                 Object.assign(Configs, configs);
-                await chrome.storage.local.set(Configs);
+                await chrome.storage.local.set(toStorageData(Configs));
                 let str = chrome.i18n.getMessage("downloadConfigSucceed");
                 Configs.notifySyncResult(str, "alert-success");
             } else {
@@ -406,7 +406,7 @@ var Configs =
 
                 Object.assign(Configs, DefaultConfigs, configData);
 
-                await chrome.storage.local.set(Configs);
+                await chrome.storage.local.set(toStorageData(Configs));
 
                 await Configs.init();
 
@@ -478,6 +478,12 @@ window.onkeyup = function (e) {
         }
         button?.focus({ focusVisible: true });
     }
+}
+
+// Firefox uses structured clone (not JSON) for storage — functions cause DataCloneError.
+// Extract only serializable (non-function) properties before any storage.set() call.
+function toStorageData(obj) {
+    return Object.fromEntries(Object.entries(obj).filter(([, v]) => typeof v !== 'function'));
 }
 
 function isRpcListChanged(changes) {
@@ -576,6 +582,6 @@ function markRpc(event) {
     let rpcIndex = event.delegateTarget.id.split('-')[1];
     if (rpcIndex in Configs.rpcList) {
         Configs.rpcList[rpcIndex].ignoreInsecure = !Configs.rpcList[rpcIndex].ignoreInsecure;
-        chrome.storage.local.set(Configs);
+        chrome.storage.local.set(toStorageData(Configs));
     }
 }
