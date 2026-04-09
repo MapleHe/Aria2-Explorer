@@ -28,7 +28,7 @@ var RemoteAria2List = [];
 const IconAnimController = new AnimationController();
 const ContextMenus = new ContextMenu();
 
-const isDownloadListened = () => chrome.downloads.onDeterminingFilename.hasListener(captureDownload);
+const isDownloadListened = () => chrome.downloads.onDeterminingFilename?.hasListener(captureDownload) ?? false;
 
 /**
  * @typedef RpcItem
@@ -261,7 +261,7 @@ function shouldCapture(downloadItem) {
 
 function enableCapture() {
     if (!isDownloadListened()) {
-        chrome.downloads.onDeterminingFilename.addListener(captureDownload);
+        chrome.downloads.onDeterminingFilename?.addListener(captureDownload);
     }
     IconManager.turnOn();
     Configs.integration = true;
@@ -270,7 +270,7 @@ function enableCapture() {
 
 function disableCapture() {
     if (isDownloadListened()) {
-        chrome.downloads.onDeterminingFilename.removeListener(captureDownload);
+        chrome.downloads.onDeterminingFilename?.removeListener(captureDownload);
     }
     IconManager.turnOff(Configs.iconOffStyle);
     Configs.integration = false;
@@ -668,7 +668,7 @@ function disableMonitor() {
     Configs.monitorAria2 = false;
     ContextMenus.update("MENU_MONITOR_ARIA2", { checked: false });
     if (Configs.integration && !isDownloadListened()) {
-        chrome.downloads.onDeterminingFilename.addListener(captureDownload);
+        chrome.downloads.onDeterminingFilename?.addListener(captureDownload);
     }
     chrome.power?.releaseKeepAwake();
 }
@@ -694,7 +694,7 @@ async function monitorAria2() {
             uploadSpeed += Number(response.result.uploadSpeed);
             downloadSpeed += Number(response.result.downloadSpeed);
             if (Configs.integration && i == 0 && !isDownloadListened()) {
-                chrome.downloads.onDeterminingFilename.addListener(captureDownload);
+                chrome.downloads.onDeterminingFilename?.addListener(captureDownload);
             }
 
             // Only for default aria2, needs Aria2 enhanced version
@@ -711,7 +711,7 @@ async function monitorAria2() {
                     errorMessage = "Aria2 server is unreachable";
 
                 if (Configs.monitorAria2 && Configs.integration && isDownloadListened()) {
-                    chrome.downloads.onDeterminingFilename.removeListener(captureDownload);
+                    chrome.downloads.onDeterminingFilename?.removeListener(captureDownload);
                 }
             }
         } finally {
@@ -825,7 +825,7 @@ function registerAllListeners() {
     });
 
     /* Cache popup window bounds to memory on move/resize (no storage IO) */
-    chrome.windows.onBoundsChanged.addListener(function (win) {
+    chrome.windows.onBoundsChanged?.addListener(function (win) {
         if (win.id === UIWindowId) {
             UIWindowBounds = { left: win.left, top: win.top, width: win.width, height: win.height };
         }
@@ -845,7 +845,7 @@ function registerAllListeners() {
         chrome.notifications.clear(id);
     });
 
-    chrome.notifications.onButtonClicked.addListener(function (nid, buttonIndex) {
+    chrome.notifications.onButtonClicked?.addListener(function (nid, buttonIndex) {
         if (nid == NID_CAPTURED_OTHERS) {
             switch (buttonIndex) {
                 case 0:

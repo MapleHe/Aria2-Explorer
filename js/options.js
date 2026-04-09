@@ -264,7 +264,9 @@ var Configs =
             tempSet.delete("");
             Configs[textarea.id] = Array.from(tempSet);
         }
-        chrome.storage.local.set(toStorageData(Configs));
+        const saveData = toStorageData(Configs);
+        delete saveData.ariaNgOptions; // ariaNgOptions is managed by AriaNg itself and cloud sync
+        chrome.storage.local.set(saveData);
     },
     upload: function () {
         try {

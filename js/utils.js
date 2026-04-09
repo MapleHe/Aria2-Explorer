@@ -11,7 +11,7 @@ class Utils {
     static exportRpcToAriaNg(rpcList, ariaNgOptions) {
 
         if (!ariaNgOptions || !Object.keys(ariaNgOptions).length)
-            ariaNgOptions = DefaultAriaNgOptions;
+            ariaNgOptions = Object.assign({}, DefaultAriaNgOptions);
 
         ariaNgOptions.extendRpcServers = [];
 
@@ -247,6 +247,11 @@ class Utils {
             requireInteraction: false
         };
         Object.assign(option, content);
+        if (/Firefox/.test(navigator.userAgent)) {
+            delete option.requireInteraction;
+            delete option.silent;
+            delete option.buttons;
+        }
         chrome.notifications.create(id, option);
     }
 
