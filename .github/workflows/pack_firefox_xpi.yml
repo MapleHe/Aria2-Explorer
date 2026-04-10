@@ -1,0 +1,41 @@
+name: Package Extension
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - "firefox-support"
+
+jobs:
+  zip-package:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out current branch
+        uses: actions/checkout@v4
+      - name: Create zip package
+        run: |
+          mkdir -p dist
+          zip -r dist/aria2-explorer-firefox.xpi \
+            acknowledgment.txt \
+            aria2.html \
+            background.js \
+            FlowChart-CN.SVG \
+            images \
+            LICENSE \
+            magnet.html \
+            README.cn.md \
+            ui \
+            background.html \
+            css \
+            FlowChart-EN.SVG \
+            js \
+            _locales \
+            manifest.json \
+            options.html \
+            README.md
+
+      - name: Upload zip artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: packaged-files
+          path: dist/aria2-explorer-firefox.xpi
