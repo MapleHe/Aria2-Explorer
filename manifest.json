@@ -1,16 +1,19 @@
 {
-   "name": "__MSG_appName__",
+   "name": "Aria2-explorer-firefox",
    "short_name": "A2E",
-   "version": "2.8.0",
+   "version": "1.0.0",
    "manifest_version": 3,
    "default_locale": "en",
-   "description": "__MSG_description__",
+   "description": "Ariar explorer for firefox.",
    "homepage_url": "https://aria2e.com",
    "options_page": "options.html",
    "browser_specific_settings": {
       "gecko": {
          "id": "aria2-explorer@aria2e.com",
-         "strict_min_version": "140.0"
+         "strict_min_version": "140.0",
+         "data_collection_permissions": {
+            "required": ["none"]
+         }
       }
    },
    "permissions": [
