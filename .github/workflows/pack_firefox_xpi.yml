@@ -1,17 +1,21 @@
-name: Package Extension
+name: Release Package
 
 on:
-  workflow_dispatch:
   push:
-    branches:
+    tags:
       - "firefox-support"
 
+permissions:
+  contents: write
+
 jobs:
-  zip-package:
+  release:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Check out current branch
+      - name: Check out tagged commit
         uses: actions/checkout@v4
+
       - name: Create zip package
         run: |
           mkdir -p dist
@@ -34,8 +38,7 @@ jobs:
             options.html \
             README.md
 
-      - name: Upload zip artifact
-        uses: actions/upload-artifact@v4
+      - name: Publish GitHub Release and upload asset
+        uses: softprops/action-gh-release@v2
         with:
-          name: packaged-files
-          path: dist/aria2-explorer-firefox.xpi
+          files: dist/aria2-explorer-firefox.xpi
