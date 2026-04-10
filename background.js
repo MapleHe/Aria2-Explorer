@@ -28,7 +28,34 @@ var RemoteAria2List = [];
 const IconAnimController = new AnimationController();
 const ContextMenus = new ContextMenu();
 
-const isDownloadListened = () => chrome.downloads.onDeterminingFilename?.hasListener(captureDownload) ?? false;
+const isFirefox = /Firefox/.test(navigator.userAgent);
+const _downloadEvent = () => chrome.downloads.onDeterminingFilename ?? chrome.downloads.onCreated;
+const isDownloadListened = () => {
+    if (isFirefox && chrome.webRequest?.onHeadersReceived) {
+        return chrome.webRequest.onHeadersReceived.hasListener(captureDownloadViaWebRequest);
+    }
+    return _downloadEvent()?.hasListener(captureDownload) ?? false;
+};
+
+function _addCaptureListener() {
+    if (isFirefox && chrome.webRequest?.onHeadersReceived) {
+        chrome.webRequest.onHeadersReceived.addListener(
+            captureDownloadViaWebRequest,
+            { urls: ['<all_urls>'], types: ['main_frame', 'sub_frame'] },
+            ['blocking', 'responseHeaders']
+        );
+    } else {
+        _downloadEvent()?.addListener(captureDownload);
+    }
+}
+
+function _removeCaptureListener() {
+    if (isFirefox && chrome.webRequest?.onHeadersReceived) {
+        chrome.webRequest.onHeadersReceived.removeListener(captureDownloadViaWebRequest);
+    } else {
+        _downloadEvent()?.removeListener(captureDownload);
+    }
+}
 
 /**
  * @typedef RpcItem
@@ -144,7 +171,10 @@ async function send2Aria(downloadItem, rpcItem) {
     }
     options.header = headers;
     if (downloadItem.referrer) options.referer = downloadItem.referrer;
-    if (downloadItem.filename) options.out = downloadItem.filename;
+    if (downloadItem.filename) {
+        // Firefox onCreated provides full absolute path; extract basename only
+        options.out = downloadItem.filename.split(/[\\/]/).pop() || downloadItem.filename;
+    }
     if (downloadItem.dir) options.dir = downloadItem.dir;
     if (downloadItem.hasOwnProperty('options')) {
         options = Object.assign(options, downloadItem.options);
@@ -256,12 +286,60 @@ function shouldCapture(downloadItem) {
         }
     }
 
-    return downloadItem.fileSize >= Configs.fileSize * 1024 * 1024
+    return downloadItem.fileSize < 0 || downloadItem.fileSize >= Configs.fileSize * 1024 * 1024
+}
+
+function captureDownloadViaWebRequest(details) {
+    if (!Configs.integration) return;
+    if (isBrowserInternalUrl(details.url)) return;
+
+    const headers = details.responseHeaders || [];
+    const contentDisposition = headers.find(h => h.name.toLowerCase() === 'content-disposition');
+    if (!contentDisposition?.value?.toLowerCase().includes('attachment')) return;
+
+    const contentLengthHeader = headers.find(h => h.name.toLowerCase() === 'content-length');
+    const fileSize = contentLengthHeader ? (parseInt(contentLengthHeader.value) || -1) : -1;
+
+    // Prefer RFC 5987 filename* over filename
+    let filename = '';
+    const fnStarMatch = contentDisposition.value.match(/filename\*\s*=\s*(?:[Uu][Tt][Ff]-8|[Ii][Ss][Oo]-8859-1)'[^']*'([^;\r\n]+)/i);
+    if (fnStarMatch) {
+        filename = decodeURIComponent(fnStarMatch[1].trim());
+    } else {
+        const fnMatch = contentDisposition.value.match(/filename\s*=\s*"([^"]+)"|filename\s*=\s*([^;\r\n]+)/i);
+        if (fnMatch) filename = (fnMatch[1] || fnMatch[2] || '').trim();
+    }
+    if (!filename) filename = Utils.getFileNameFromUrl(details.url) || '';
+
+    const downloadItem = {
+        url: details.url,
+        filename,
+        fileSize,
+        referrer: details.documentUrl || details.originUrl || '',
+        state: 'in_progress',
+        error: null,
+        byExtensionId: null
+    };
+
+    if (!shouldCapture(downloadItem)) return;
+
+    if (downloadItem.referrer === 'about:blank') downloadItem.referrer = '';
+    const rpcItem = getRpcServer(downloadItem.url + downloadItem.filename);
+
+    // Async: send to Aria2; fall back to Firefox download if Aria2 unreachable
+    download(downloadItem, rpcItem).then(successful => {
+        if (!successful && Utils.isLocalhost(rpcItem.url)) {
+            disableCapture();
+            chrome.downloads.download({ url: downloadItem.url }).then(enableCapture);
+        }
+    });
+
+    return { cancel: true };
 }
 
 function enableCapture() {
     if (!isDownloadListened()) {
-        chrome.downloads.onDeterminingFilename?.addListener(captureDownload);
+        _addCaptureListener();
     }
     IconManager.turnOn();
     Configs.integration = true;
@@ -270,7 +348,7 @@ function enableCapture() {
 
 function disableCapture() {
     if (isDownloadListened()) {
-        chrome.downloads.onDeterminingFilename?.removeListener(captureDownload);
+        _removeCaptureListener();
     }
     IconManager.turnOff(Configs.iconOffStyle);
     Configs.integration = false;
@@ -282,7 +360,7 @@ async function captureDownload(downloadItem, suggest) {
         // TODO: Filename assigned by chrome.downloads.download() was not passed in
         // and will be discarded by Chrome. No solution or workaround right now. The
         // only way is disabling capture before other extensions call chrome.downloads.download().
-        suggest();
+        if (suggest) suggest();
         const title = chrome.i18n.getMessage("RemindCaptureTip");
         const message = chrome.i18n.getMessage("RemindCaptureTipDes");
         const requireInteraction = true;
@@ -370,7 +448,12 @@ async function launchUI(info) {
     } else if (Configs.webUIOpenStyle === "popup") {
         const popupUrl = chrome.runtime.getURL('ui/ariang/popup.html');
         await chrome.action.setPopup({ popup: webUiUrl.replace('index', 'popup') });
-        await chrome.action.openPopup();
+        try {
+            await chrome.action.openPopup();
+        } catch {
+            // openPopup requires user gesture (Firefox); fall back to new tab
+            chrome.tabs.create({ url: webUiUrl });
+        }
         await chrome.action.setPopup({ popup: popupUrl });
     } else {
         chrome.tabs.query({ "url": index }).then(function (tabs) {
@@ -668,7 +751,7 @@ function disableMonitor() {
     Configs.monitorAria2 = false;
     ContextMenus.update("MENU_MONITOR_ARIA2", { checked: false });
     if (Configs.integration && !isDownloadListened()) {
-        chrome.downloads.onDeterminingFilename?.addListener(captureDownload);
+        _addCaptureListener();
     }
     chrome.power?.releaseKeepAwake();
 }
@@ -694,7 +777,7 @@ async function monitorAria2() {
             uploadSpeed += Number(response.result.uploadSpeed);
             downloadSpeed += Number(response.result.downloadSpeed);
             if (Configs.integration && i == 0 && !isDownloadListened()) {
-                chrome.downloads.onDeterminingFilename?.addListener(captureDownload);
+                _addCaptureListener();
             }
 
             // Only for default aria2, needs Aria2 enhanced version
@@ -711,7 +794,7 @@ async function monitorAria2() {
                     errorMessage = "Aria2 server is unreachable";
 
                 if (Configs.monitorAria2 && Configs.integration && isDownloadListened()) {
-                    chrome.downloads.onDeterminingFilename?.removeListener(captureDownload);
+                    _removeCaptureListener();
                 }
             }
         } finally {

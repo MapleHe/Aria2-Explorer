@@ -516,7 +516,8 @@ function toggleMagnetHandler(flag) {
     if (flag) {
         navigator.registerProtocolHandler("magnet", magnetPage, "Capture Magnet");
     } else {
-        navigator.unregisterProtocolHandler("magnet", magnetPage);
+        if (navigator.unregisterProtocolHandler)
+            navigator.unregisterProtocolHandler("magnet", magnetPage);
     }
 }
 

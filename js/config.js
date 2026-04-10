@@ -51,7 +51,7 @@ export const DefaultConfigs = {
     askBeforeDownload: false,
     allowExternalRequest: false,
     monitorAria2: false,
-    monitorAll: false,
+    monitorAll: true,
     keepAwake: false,
     badgeText: true,
     allowNotification: true,
