@@ -20,7 +20,7 @@ jobs:
       - name: Create zip package
         run: |
           mkdir -p dist
-          zip -r dist/aria2-explorer-firefox.xpi \
+          zip -r dist/aria2-explorer-firefox.xpi.zip \
             acknowledgment.txt \
             aria2.html \
             background.js \
@@ -42,4 +42,4 @@ jobs:
       - name: Publish GitHub Release and upload asset
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/aria2-explorer-firefox.xpi
+          files: dist/aria2-explorer-firefox.xpi.zip
